@@ -1,0 +1,39 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<xri version="1.0" type="update-information">
+   <description>
+      <p>
+         <b>YuMiHDR</b> &mdash; Advanced HDR for non-linear deep-sky
+         astrophotography. Multi-scale local tone mapping with star
+         protection and faint-background (IFN) recovery, designed for
+         high-dynamic-range targets such as M42, M81 and IFN-rich fields.
+      </p>
+      <p>
+         To install: in PixInsight open
+         <em>RESOURCES &rarr; Updates &rarr; Manage Repositories</em> and add
+         <code>https://yumiastro.github.io/YuMiHDR/</code>. Then run
+         <em>RESOURCES &rarr; Updates &rarr; Check for Updates</em> and
+         restart PixInsight when prompted.
+      </p>
+   </description>
+
+   <platform os="all" arch="noarch" version="1.8.9:1.9.99">
+
+      <package fileName="YuMiHDR-script-1.0.0.zip" sha1="65b88eba4ae6f00b647eddc6437d7e9e64adbccf"
+               type="script"
+               releaseDate="2026-05-26">
+         <title>YuMiHDR Script Module 1.0.0</title>
+         <description>
+            <p>
+               First public release of YuMiHDR. Provides a fully interactive
+               HDR tool with real-time side-by-side preview, multi-scale
+               local tone mapping, star protection and IFN background lift.
+            </p>
+            <p>After install, find it under <em>SCRIPT &rarr; YuMiHDR &rarr;
+               YuMiHDR</em>.</p>
+         </description>
+      </package>
+
+   </platform>
+</xri>
+
+

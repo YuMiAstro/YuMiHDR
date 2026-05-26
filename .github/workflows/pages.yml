@@ -1,0 +1,61 @@
+name: Deploy update repository to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rebuild package and refresh updates.xri
+        shell: pwsh
+        run: |
+          $ver = '1.0.0'
+          $root = $env:GITHUB_WORKSPACE
+          $stage = Join-Path $root 'build/stage'
+          New-Item -ItemType Directory -Force $stage | Out-Null
+          $dst = Join-Path $stage 'src/scripts/YuMiHDR'
+          New-Item -ItemType Directory -Force $dst | Out-Null
+          Copy-Item -Force (Join-Path $root 'src/scripts/YuMiHDR/*') $dst
+          $zipName = "YuMiHDR-script-$ver.zip"
+          $zipPath = Join-Path $root "repository/$zipName"
+          if (Test-Path $zipPath) { Remove-Item -Force $zipPath }
+          Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zipPath -Force
+          $sha = (Get-FileHash -Algorithm SHA1 $zipPath).Hash.ToLower()
+          $xri = Join-Path $root 'repository/updates.xri'
+          $c = Get-Content -Raw $xri
+          $c = [Regex]::Replace($c,
+            'fileName="YuMiHDR-script-[\d\.]+\.zip"\s+sha1="[^"]+"',
+            "fileName=`"$zipName`" sha1=`"$sha`"")
+          $c = [Regex]::Replace($c,
+            'releaseDate="\d{4}-\d{2}-\d{2}"',
+            ('releaseDate="' + (Get-Date -Format 'yyyy-MM-dd') + '"'))
+          Set-Content -Path $xri -Value $c -Encoding utf8
+
+      - name: Upload Pages artefact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: repository
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
