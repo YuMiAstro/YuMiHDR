@@ -1,0 +1,79 @@
+name: Publish GitHub Release on tag
+
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g. v1.0.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version from tag
+        id: ver
+        shell: bash
+        run: |
+          REF="${GITHUB_REF#refs/tags/}"
+          if [ -z "$REF" ] || [ "$REF" = "$GITHUB_REF" ]; then
+            REF="${{ github.event.inputs.tag }}"
+          fi
+          VER="${REF#v}"
+          echo "tag=$REF"     >> "$GITHUB_OUTPUT"
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+
+      - name: Build script package
+        shell: pwsh
+        run: |
+          $ver  = '${{ steps.ver.outputs.version }}'
+          $root = $env:GITHUB_WORKSPACE
+          $stage = Join-Path $root 'build/stage'
+          New-Item -ItemType Directory -Force $stage | Out-Null
+          $dst = Join-Path $stage 'src/scripts/YuMiHDR'
+          New-Item -ItemType Directory -Force $dst | Out-Null
+          Copy-Item -Force (Join-Path $root 'src/scripts/YuMiHDR/*') $dst
+          New-Item -ItemType Directory -Force (Join-Path $root 'dist') | Out-Null
+          $zip = Join-Path $root "dist/YuMiHDR-script-$ver.zip"
+          if (Test-Path $zip) { Remove-Item -Force $zip }
+          Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip -Force
+          $sha = (Get-FileHash -Algorithm SHA1 $zip).Hash.ToLower()
+          Write-Host "zip:  $zip"
+          Write-Host "sha1: $sha"
+          "SHA1 ($sha)  $($zip | Split-Path -Leaf)" | Out-File -Encoding utf8 (Join-Path $root 'dist/SHA1SUMS.txt')
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: YuMiHDR ${{ steps.ver.outputs.version }}
+          generate_release_notes: true
+          body: |
+            ## Install via PixInsight update repository (recommended)
+
+            In PixInsight: **RESOURCES &rarr; Updates &rarr; Manage Repositories &rarr; Add**
+
+                https://yumiastro.github.io/YuMiHDR/
+
+            Then **RESOURCES &rarr; Updates &rarr; Check for Updates** and restart PixInsight.
+
+            ## Manual install
+
+            Download `YuMiHDR-script-${{ steps.ver.outputs.version }}.zip` below
+            and extract over your PixInsight installation directory so that
+            files land in `<PixInsightDir>/src/scripts/YuMiHDR/`. Then
+            **SCRIPT &rarr; Feature Scripts... &rarr; Add** and point it at that
+            folder.
+
+            See [doc/parameters.md](doc/parameters.md) for parameter usage
+            and [doc/algorithm.md](doc/algorithm.md) for the math.
+          files: |
+            dist/YuMiHDR-script-${{ steps.ver.outputs.version }}.zip
+            dist/SHA1SUMS.txt
